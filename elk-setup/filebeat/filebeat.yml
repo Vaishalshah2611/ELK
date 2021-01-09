@@ -1,0 +1,53 @@
+version: '2.2'
+services:
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:7.4.2
+    container_name: filebeat
+    restart: always
+    user: root
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+
+
+filebeat.inputs:
+
+# Each - is an input. Most options can be set at the input level, so
+# you can use different inputs for various configurations.
+# Below are the input specific configurations.
+
+        #- type: log
+
+  # Change to true to enable this input configuration.
+  #  enabled: true
+
+  # Paths that should be crawled and fetched. Glob based paths.
+filebeat.config:
+  modules:
+    path: ${path.config}/modules.d/*.yml
+    reload.enabled: false
+
+filebeat.autodiscover:
+  providers:
+    - type: docker
+      hints.enabled: true
+
+processors:
+- add_cloud_metadata: ~
+- add_docker_metadata: ~
+- drop_event.when:
+    or:
+    - equals:
+        container.name: "filebeat"
+    - equals:
+        container.name: "kibana"
+    - equals:
+        container.name: "elasticsearch"
+    - equals:
+        container.image.name: "docker.elastic.co/beats/filebeat:7.4.2"
+output.elasticsearch:
+  hosts: ["http://host:9200"]
+  username: "elastic"
+  password: "yourpassword"
+
